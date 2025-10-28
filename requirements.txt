@@ -32,6 +32,8 @@ redis
 aiosqlite
 emoji
 colorama
+hf_xet
+huggingface-hub
 
 # Forecasting (optional but impressive)
 prophet

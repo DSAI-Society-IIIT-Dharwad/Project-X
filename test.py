@@ -1,15 +1,12 @@
-import praw
-from dotenv import load_dotenv
+# Create a file: test_gemini.py
+import google.generativeai as genai
 import os
+from dotenv import load_dotenv
 
 load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-reddit = praw.Reddit(
-    client_id=os.getenv("REDDIT_CLIENT_ID"),
-    client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
-    user_agent=os.getenv("REDDIT_USER_AGENT")
-)
-
-print("Authenticated as:", reddit.user.me())  # should print None for script app, that's ok
-for submission in reddit.subreddit("worldnews").hot(limit=3):
-    print(submission.title)
+print("🔍 Your available Gemini models:\n")
+for m in genai.list_models():
+    if 'generateContent' in m.supported_generation_methods:
+        print(f"✅ {m.name}")
