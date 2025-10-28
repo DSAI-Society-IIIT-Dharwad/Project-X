@@ -1,0 +1,53 @@
+# Core Dependencies
+fastapi
+uvicorn
+praw
+python-dotenv
+pydantic
+
+# NLP + ML
+transformers
+torch
+sentence-transformers
+bertopic
+hdbscan
+umap-learn
+faiss-cpu
+scikit-learn
+numpy
+pandas
+regex
+nltk
+tqdm
+
+# Visualization + Dashboard
+streamlit
+plotly
+matplotlib
+
+# Database + Utils
+sqlalchemy
+sqlite-utils
+redis 
+aiosqlite
+emoji
+colorama
+
+# Forecasting (optional but impressive)
+prophet
+
+# For scheduling or threading
+apscheduler
+
+# Scraping 
+praw
+snscrape
+
+#LLM 
+google-generativeai
+
+# Voice
+SpeechRecognition
+pyttsx3
+pyaudio
+

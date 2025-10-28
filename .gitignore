@@ -1,0 +1,204 @@
+# ============================================
+# NEWS BOT PROJECT - .gitignore
+# ============================================
+
+# ============================================
+# CRITICAL: Environment & API Keys
+# ============================================
+.env
+.env.local
+.env.*.local
+*.key
+secrets/
+config/secret*
+
+# ============================================
+# Python
+# ============================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# ============================================
+# Database Files
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+news_bot.db
+*.db-journal
+
+# ============================================
+# Data Files (Can be large)
+# ============================================
+data/raw/*.json
+data/raw/*.csv
+data/processed/*.json
+data/processed/*.csv
+data/raw/
+data/processed/
+*.jsonl
+
+# Keep the folder structure but ignore contents
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# ============================================
+# ML Models & Indexes (Large files)
+# ============================================
+models/bertopic/*
+models/faiss_index/*
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.pt
+*.pth
+*.onnx
+*.bin
+
+# Keep folder structure
+!models/bertopic/.gitkeep
+!models/faiss_index/.gitkeep
+
+# ============================================
+# IDE & Editor Files
+# ============================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# ============================================
+# OS Files
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+.directory
+
+# ============================================
+# Logs & Temporary Files
+# ============================================
+*.log
+logs/
+*.tmp
+*.temp
+temp/
+tmp/
+
+# ============================================
+# Testing & Coverage
+# ============================================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# ============================================
+# Jupyter Notebooks
+# ============================================
+.ipynb_checkpoints/
+*.ipynb
+
+# ============================================
+# Streamlit
+# ============================================
+.streamlit/secrets.toml
+
+# ============================================
+# FastAPI / Uvicorn
+# ============================================
+*.pid
+
+# ============================================
+# Documentation
+# ============================================
+docs/_build/
+site/
+
+# ============================================
+# Backup Files
+# ============================================
+*.bak
+*.backup
+*~
+
+# ============================================
+# Cache Directories
+# ============================================
+.cache/
+.mypy_cache/
+.dmypy.json
+.pytype/
+.ruff_cache/
+
+# ============================================
+# Project Specific
+# ============================================
+# Scraped data backups
+backups/
+archives/
+
+# Voice recordings (if saving)
+recordings/
+*.wav
+*.mp3
+
+# Large dumps
+dump/
