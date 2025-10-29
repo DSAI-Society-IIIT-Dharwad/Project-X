@@ -1,4 +1,4 @@
-# AI News Assistant - Project X
+# InQuiro - Project X
 
 A comprehensive AI-powered news analysis platform that combines Reddit discussions with Google News coverage, providing real-time sentiment analysis, trend detection, and intelligent chat capabilities.
 
