@@ -213,6 +213,8 @@ DATABASE_URL=sqlite+aiosqlite:///./news_bot.db
 # Scraping
 SCRAPE_LIMIT=100
 SUBREDDITS=news,worldnews,politics,technology
+# Google News API Key
+NEWS_API_KEY = Your_api_key
 ```
 
 ### **Model Configuration**
