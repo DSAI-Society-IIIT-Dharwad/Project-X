@@ -15,6 +15,9 @@ from pipeline.embeddings import (
     FAISSIndex,
     embedding_model
 )
+from backend.chat_storage import save_chat_interaction
+import time
+import uuid
 from pipeline.summary import GeminiSummarizer
 from backend.db import DatabaseSession
 from backend.models import Post, Topic
@@ -169,16 +172,19 @@ class NewsBot:
         
         return prompt
 
-    async def chat(self, user_query: str) -> Dict:
+    async def chat(self, user_query: str, session_id: Optional[str] = None) -> Dict:
         """
         Process user query and generate response
         
         Args:
             user_query: User's question
+            session_id: Session ID for tracking
         
         Returns:
             Dict with response, sources, and metadata
         """
+        start_time = time.time()
+        
         print(f"\n💬 User: {user_query}")
         
         # Search for relevant posts
@@ -186,12 +192,13 @@ class NewsBot:
         relevant_posts = await self.search_relevant_posts(user_query, k=5)
         
         if not relevant_posts:
-            return {
+            response_data = {
                 'response': "I couldn't find any relevant posts about that topic. Try asking about recent news in technology, AI, climate, or other trending topics.",
                 'sources': [],
                 'relevant_posts': [],
                 'confidence': 0.0
             }
+            return response_data
         
         # Format context
         context = self.format_context(relevant_posts)
@@ -207,9 +214,29 @@ class NewsBot:
         print("🧠 Generating response...")
         response = self.gemini.generate(prompt, max_tokens=400)
         
-        # Calculate confidence based on similarity scores
+        # Calculate confidence
         avg_similarity = sum(p['similarity'] for p in relevant_posts) / len(relevant_posts)
-        confidence = min(avg_similarity * 1.2, 1.0)  # Scale up slightly
+        confidence = min(avg_similarity * 1.2, 1.0)
+        
+        # Extract post IDs
+        post_ids = [p['post'].id for p in relevant_posts]
+        
+        # Calculate response time
+        response_time_ms = int((time.time() - start_time) * 1000)
+        
+        # SAVE TO DATABASE
+        try:
+            await save_chat_interaction(
+                user_query=user_query,
+                bot_response=response,
+                relevant_post_ids=post_ids,
+                confidence_score=confidence,
+                session_id=session_id,
+                response_time_ms=response_time_ms,
+                query_type="general"
+            )
+        except Exception as e:
+            print(f"⚠️ Failed to save chat: {e}")
         
         # Store in conversation history
         self.conversation_history.append({
@@ -224,7 +251,7 @@ class NewsBot:
         
         # Extract sources
         sources = []
-        for item in relevant_posts[:3]:  # Top 3 sources
+        for item in relevant_posts[:3]:
             post = item['post']
             if post.url:
                 sources.append(post.url)
@@ -239,12 +266,6 @@ class NewsBot:
             'relevant_posts': relevant_posts,
             'confidence': confidence
         }
-    
-    def reset_conversation(self):
-        """Clear conversation history"""
-        self.conversation_history = []
-        print("🔄 Conversation reset")
-
 
 # ============================================
 # INTERACTIVE CLI
@@ -268,18 +289,20 @@ async def interactive_mode():
         print("   python -m pipeline.embeddings")
         return
     
+    # Generate session ID
+    session_id = str(uuid.uuid4())
+    print(f"\n🔑 Session ID: {session_id}")
+    
     print("\n✨ Bot is ready! Ask me about recent news.\n")
     
     # Chat loop
     while True:
         try:
-            # Get user input
             user_input = input("You: ").strip()
             
             if not user_input:
                 continue
             
-            # Handle commands
             if user_input.lower() in ['quit', 'exit', 'bye']:
                 print("\n👋 Goodbye!")
                 break
@@ -288,16 +311,14 @@ async def interactive_mode():
                 bot.reset_conversation()
                 continue
             
-            # Process query
-            result = await bot.chat(user_input)
+            # Process query WITH SESSION ID
+            result = await bot.chat(user_input, session_id=session_id)
             
             print(f"\n🤖 Bot: {result['response']}")
             
-            # Show confidence
             confidence_emoji = "🎯" if result['confidence'] > 0.7 else "🤔" if result['confidence'] > 0.4 else "🤷"
             print(f"\n{confidence_emoji} Confidence: {result['confidence']:.1%}")
             
-            # Show sources
             if result['sources']:
                 print(f"\n📚 Sources ({len(result['sources'])}):")
                 for i, source in enumerate(result['sources'][:3], 1):

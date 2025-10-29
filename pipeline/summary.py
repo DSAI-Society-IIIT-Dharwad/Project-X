@@ -306,7 +306,7 @@ async def save_summary_to_cache(
     expires_hours: int = 24
 ):
     """
-    Save summary to cache
+    Save summary to cache (update if exists)
     
     Args:
         cache_key: Unique identifier
@@ -315,28 +315,35 @@ async def save_summary_to_cache(
         expires_hours: Hours until expiration
     """
     async with DatabaseSession() as db:
-        # Delete existing if any
-        existing = await db.scalar(
+        # Check if entry exists
+        result = await db.execute(
             select(SummaryCache).where(SummaryCache.cache_key == cache_key)
         )
-        if existing:
-            await db.delete(existing)
+        existing = result.scalar_one_or_none()
         
-        # Create new cache entry
         expires_at = datetime.utcnow() + timedelta(hours=expires_hours)
         
-        cache = SummaryCache(
-            cache_key=cache_key,
-            summary_type=summary_type,
-            summary_text=summary_text,
-            expires_at=expires_at,
-            token_count=len(summary_text.split())
-        )
+        if existing:
+            # UPDATE existing entry
+            existing.summary_text = summary_text
+            existing.summary_type = summary_type
+            existing.expires_at = expires_at
+            existing.token_count = len(summary_text.split())
+            existing.generated_at = datetime.utcnow()  # Refresh timestamp
+            print(f"💾 Updated cached summary: {cache_key}")
+        else:
+            # INSERT new cache entry
+            cache = SummaryCache(
+                cache_key=cache_key,
+                summary_type=summary_type,
+                summary_text=summary_text,
+                expires_at=expires_at,
+                token_count=len(summary_text.split())
+            )
+            db.add(cache)
+            print(f"💾 Created new cache: {cache_key}")
         
-        db.add(cache)
         await db.commit()
-        
-        print(f"💾 Cached summary: {cache_key}")
 
 
 # ============================================

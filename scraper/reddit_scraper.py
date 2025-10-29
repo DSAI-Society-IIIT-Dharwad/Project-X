@@ -1,6 +1,6 @@
 """
-Reddit Scraper using PRAW
-Collects posts and comments from specified subreddits
+Enhanced Reddit Scraper with Query Support
+Supports both monitored subreddits and dynamic query-based search
 """
 
 import praw
@@ -16,12 +16,12 @@ from sqlalchemy import select
 
 from backend.db import DatabaseSession, init_db
 from backend.models import Post
+from config import MONITORED_SUBREDDITS, POSTS_PER_SUBREDDIT, QUERY_SEARCH_LIMIT, QUERY_TIME_FILTER
 
-# Load environment variables
 load_dotenv()
 
 # ============================================
-# REDDIT CLIENT SETUP
+# REDDIT CLIENT
 # ============================================
 
 def get_reddit_client():
@@ -30,206 +30,187 @@ def get_reddit_client():
         reddit = praw.Reddit(
             client_id=os.getenv("REDDIT_CLIENT_ID"),
             client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
-            user_agent=os.getenv("REDDIT_USER_AGENT")
+            user_agent=os.getenv("REDDIT_USER_AGENT"),
+            username=os.getenv("REDDIT_USERNAME"),
+            password=os.getenv("REDDIT_PASSWORD")
         )
-        
-        # Test authentication
         print(f"✅ Authenticated as: {reddit.user.me()}")
         return reddit
-    
     except Exception as e:
         print(f"❌ Reddit authentication failed: {e}")
-        print("\n🔑 Make sure your .env file has:")
-        print("   REDDIT_CLIENT_ID")
-        print("   REDDIT_CLIENT_SECRET")
-        print("   REDDIT_USER_AGENT")
         raise
 
-
 # ============================================
-# SCRAPING FUNCTIONS
+# WORKFLOW 1: MONITORED SUBREDDITS
 # ============================================
 
-def scrape_subreddit(
+def scrape_monitored_subreddits(
     reddit: praw.Reddit,
-    subreddit_name: str,
-    limit: int = 100,
-    time_filter: str = "day",
-    sort_by: str = "hot"
+    subreddits: Optional[List[str]] = None,
+    limit_per_sub: int = None
 ) -> List[Dict]:
     """
-    Scrape posts from a subreddit
+    Scrape from monitored subreddits (Workflow 1)
     
     Args:
         reddit: PRAW Reddit instance
-        subreddit_name: Name of subreddit (e.g., 'news')
-        limit: Number of posts to fetch
-        time_filter: 'hour', 'day', 'week', 'month', 'year', 'all'
-        sort_by: 'hot', 'new', 'top', 'rising'
+        subreddits: List of subreddits (defaults to config)
+        limit_per_sub: Posts per subreddit (defaults to config)
     
     Returns:
         List of post dictionaries
     """
-    print(f"\n📡 Scraping r/{subreddit_name} ({sort_by}, limit={limit})...")
+    if subreddits is None:
+        subreddits = MONITORED_SUBREDDITS
     
-    try:
-        subreddit = reddit.subreddit(subreddit_name)
-        posts_data = []
-        
-        # Choose sorting method
-        if sort_by == "hot":
-            posts = subreddit.hot(limit=limit)
-        elif sort_by == "new":
-            posts = subreddit.new(limit=limit)
-        elif sort_by == "top":
-            posts = subreddit.top(time_filter=time_filter, limit=limit)
-        elif sort_by == "rising":
-            posts = subreddit.rising(limit=limit)
-        else:
-            posts = subreddit.hot(limit=limit)
-        
-        for submission in posts:
-            # Skip stickied posts
-            if submission.stickied:
-                continue
-            
-            post_data = {
-                "post_id": submission.id,
-                "source": "reddit",
-                "subreddit": subreddit_name,
-                "author": str(submission.author) if submission.author else "[deleted]",
-                "title": submission.title,
-                "content": submission.selftext if submission.selftext else "",
-                "url": submission.url,
-                "score": submission.score,
-                "num_comments": submission.num_comments,
-                "created_at": datetime.fromtimestamp(submission.created_utc, tz=timezone.utc),
-                "permalink": f"https://reddit.com{submission.permalink}",
-                
-                # Metadata for later processing
-                "upvote_ratio": submission.upvote_ratio,
-                "is_original_content": submission.is_original_content,
-                "is_video": submission.is_video,
-                "link_flair_text": submission.link_flair_text,
-            }
-            
-            posts_data.append(post_data)
-        
-        print(f"✅ Scraped {len(posts_data)} posts from r/{subreddit_name}")
-        return posts_data
+    if limit_per_sub is None:
+        limit_per_sub = POSTS_PER_SUBREDDIT
     
-    except Exception as e:
-        print(f"❌ Error scraping r/{subreddit_name}: {e}")
-        return []
-
-
-def scrape_multiple_subreddits(
-    reddit: praw.Reddit,
-    subreddits: List[str],
-    limit_per_sub: int = 100,
-    time_filter: str = "day",
-    sort_by: str = "hot"
-) -> List[Dict]:
-    """
-    Scrape posts from multiple subreddits
+    print(f"\n📡 WORKFLOW 1: Scraping monitored subreddits")
+    print(f"   Subreddits: {subreddits}")
+    print(f"   Posts per subreddit: {limit_per_sub}\n")
     
-    Args:
-        reddit: PRAW Reddit instance
-        subreddits: List of subreddit names
-        limit_per_sub: Posts to fetch per subreddit
-        time_filter: Time filter for sorting
-        sort_by: Sorting method
-    
-    Returns:
-        Combined list of all posts
-    """
     all_posts = []
     
-    for subreddit in subreddits:
-        posts = scrape_subreddit(
-            reddit=reddit,
-            subreddit_name=subreddit,
-            limit=limit_per_sub,
-            time_filter=time_filter,
-            sort_by=sort_by
-        )
-        all_posts.extend(posts)
-        
-        # Rate limiting - be nice to Reddit API
-        time.sleep(2)
-    
-    print(f"\n✅ Total posts scraped: {len(all_posts)}")
-    return all_posts
-
-
-def scrape_with_keywords(
-    reddit: praw.Reddit,
-    subreddit_name: str,
-    keywords: List[str],
-    limit: int = 100
-) -> List[Dict]:
-    """
-    Search for posts containing specific keywords
-    
-    Args:
-        reddit: PRAW Reddit instance
-        subreddit_name: Subreddit to search in
-        keywords: List of keywords to search for
-        limit: Maximum posts to return
-    
-    Returns:
-        List of matching posts
-    """
-    print(f"\n🔍 Searching r/{subreddit_name} for keywords: {keywords}")
-    
-    subreddit = reddit.subreddit(subreddit_name)
-    posts_data = []
-    
-    for keyword in keywords:
+    for subreddit_name in subreddits:
         try:
-            search_results = subreddit.search(
-                query=keyword,
-                limit=limit // len(keywords),
-                time_filter="day",
-                sort="relevance"
-            )
+            print(f"📥 r/{subreddit_name}...", end=" ")
+            subreddit = reddit.subreddit(subreddit_name)
+            posts = subreddit.hot(limit=limit_per_sub)
             
-            for submission in search_results:
+            count = 0
+            for submission in posts:
+                if submission.stickied:
+                    continue
+                
                 post_data = {
                     "post_id": submission.id,
                     "source": "reddit",
                     "subreddit": subreddit_name,
                     "author": str(submission.author) if submission.author else "[deleted]",
                     "title": submission.title,
-                    "content": submission.selftext,
+                    "content": submission.selftext if submission.selftext else "",
                     "url": submission.url,
                     "score": submission.score,
                     "num_comments": submission.num_comments,
                     "created_at": datetime.fromtimestamp(submission.created_utc, tz=timezone.utc),
-                    "matched_keyword": keyword
+                    "permalink": f"https://reddit.com{submission.permalink}",
+                    "workflow": "monitored"  # Mark source
                 }
-                posts_data.append(post_data)
+                
+                all_posts.append(post_data)
+                count += 1
             
-            time.sleep(1)  # Rate limiting
+            print(f"✅ {count} posts")
+            time.sleep(2)  # Rate limiting
         
         except Exception as e:
-            print(f"❌ Error searching for '{keyword}': {e}")
+            print(f"❌ Error: {e}")
     
-    print(f"✅ Found {len(posts_data)} posts matching keywords")
-    return posts_data
+    print(f"\n✅ Total: {len(all_posts)} posts from monitored subreddits")
+    return all_posts
 
+# ============================================
+# WORKFLOW 2: QUERY-BASED SEARCH
+# ============================================
+
+def search_reddit_by_query(
+    reddit: praw.Reddit,
+    query: str,
+    subreddits: Optional[List[str]] = None,
+    limit: int = None,
+    time_filter: str = None
+) -> List[Dict]:
+    """
+    Search Reddit for specific query (Workflow 2)
+    
+    Args:
+        reddit: PRAW Reddit instance
+        query: Search query string
+        subreddits: Subreddits to search (None = all)
+        limit: Max results
+        time_filter: 'hour', 'day', 'week', 'month', 'year', 'all'
+    
+    Returns:
+        List of matching posts
+    """
+    if limit is None:
+        limit = QUERY_SEARCH_LIMIT
+    
+    if time_filter is None:
+        time_filter = QUERY_TIME_FILTER
+    
+    print(f"\n🔍 WORKFLOW 2: Query-based search")
+    print(f"   Query: '{query}'")
+    print(f"   Time filter: {time_filter}")
+    print(f"   Limit: {limit}\n")
+    
+    all_posts = []
+    
+    # Determine search scope
+    if subreddits is None:
+        subreddits = MONITORED_SUBREDDITS + ['all']  # Include 'all' for broader search
+    
+    for subreddit_name in subreddits:
+        try:
+            print(f"🔎 Searching r/{subreddit_name}...", end=" ")
+            subreddit = reddit.subreddit(subreddit_name)
+            
+            search_results = subreddit.search(
+                query=query,
+                limit=limit,
+                time_filter=time_filter,
+                sort='relevance'
+            )
+            
+            count = 0
+            for submission in search_results:
+                post_data = {
+                    "post_id": submission.id,
+                    "source": "reddit",
+                    "subreddit": submission.subreddit.display_name,
+                    "author": str(submission.author) if submission.author else "[deleted]",
+                    "title": submission.title,
+                    "content": submission.selftext if submission.selftext else "",
+                    "url": submission.url,
+                    "score": submission.score,
+                    "num_comments": submission.num_comments,
+                    "created_at": datetime.fromtimestamp(submission.created_utc, tz=timezone.utc),
+                    "permalink": f"https://reddit.com{submission.permalink}",
+                    "workflow": "query",  # Mark source
+                    "search_query": query  # Store original query
+                }
+                
+                all_posts.append(post_data)
+                count += 1
+            
+            print(f"✅ {count} results")
+            time.sleep(2)  # Rate limiting
+        
+        except Exception as e:
+            print(f"❌ Error: {e}")
+    
+    # Remove duplicates (same post from different subreddit searches)
+    seen_ids = set()
+    unique_posts = []
+    for post in all_posts:
+        if post['post_id'] not in seen_ids:
+            seen_ids.add(post['post_id'])
+            unique_posts.append(post)
+    
+    print(f"\n✅ Total: {len(unique_posts)} unique posts for query '{query}'")
+    return unique_posts
 
 # ============================================
 # DATA STORAGE
 # ============================================
 
-def save_to_json(posts: List[Dict], filename: Optional[str] = None):
+def save_to_json(posts: List[Dict], filename: Optional[str] = None, workflow: str = "monitored"):
     """Save scraped posts to JSON file"""
     if not filename:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"reddit_scrape_{timestamp}.json"
+        filename = f"reddit_{workflow}_{timestamp}.json"
     
-    # Ensure data/raw directory exists
     data_dir = Path("data/raw")
     data_dir.mkdir(parents=True, exist_ok=True)
     
@@ -241,10 +222,9 @@ def save_to_json(posts: List[Dict], filename: Optional[str] = None):
     print(f"💾 Saved to: {filepath}")
     return filepath
 
-
-async def save_to_database(posts: List[Dict]):
+async def save_to_database(posts: List[Dict], workflow: str = "monitored"):
     """Save scraped posts to database"""
-    print(f"\n💾 Saving {len(posts)} posts to database...")
+    print(f"\n💾 Saving {len(posts)} posts to database ({workflow})...")
     
     async with DatabaseSession() as db:
         saved_count = 0
@@ -286,69 +266,101 @@ async def save_to_database(posts: List[Dict]):
         await db.commit()
     
     print(f"✅ Saved: {saved_count} | Skipped (duplicates): {skipped_count}")
-
+    return {'saved': saved_count, 'skipped': skipped_count}
 
 # ============================================
-# MAIN EXECUTION
+# MAIN FUNCTIONS
+# ============================================
+
+async def workflow_1_refresh():
+    """
+    Workflow 1: Refresh monitored subreddits
+    Called when user clicks "Refresh" on dashboard
+    """
+    print("="*60)
+    print("🔄 WORKFLOW 1: Refreshing News Dashboard")
+    print("="*60)
+    
+    await init_db()
+    reddit = get_reddit_client()
+    
+    # Scrape monitored subreddits
+    posts = scrape_monitored_subreddits(reddit)
+    
+    if posts:
+        # Save to JSON backup
+        save_to_json(posts, workflow="monitored")
+        
+        # Save to database
+        stats = await save_to_database(posts, workflow="monitored")
+        
+        return {
+            'success': True,
+            'posts_scraped': len(posts),
+            'posts_saved': stats['saved'],
+            'posts_skipped': stats['skipped']
+        }
+    
+    return {'success': False, 'error': 'No posts scraped'}
+
+async def workflow_2_query(query: str):
+    """
+    Workflow 2: Search Reddit for query
+    Called when user submits a query
+    
+    Args:
+        query: User's search query
+    
+    Returns:
+        Dictionary with scraped posts and stats
+    """
+    print("="*60)
+    print(f"🔍 WORKFLOW 2: Query Analysis")
+    print("="*60)
+    
+    await init_db()
+    reddit = get_reddit_client()
+    
+    # Search Reddit
+    posts = search_reddit_by_query(reddit, query)
+    
+    if posts:
+        # Save to JSON backup
+        query_safe = query.replace(' ', '_')[:30]
+        save_to_json(posts, filename=f"query_{query_safe}.json", workflow="query")
+        
+        # Save to database
+        stats = await save_to_database(posts, workflow="query")
+        
+        return {
+            'success': True,
+            'query': query,
+            'posts_found': len(posts),
+            'posts_saved': stats['saved'],
+            'posts_skipped': stats['skipped'],
+            'posts': posts  # Return posts for immediate processing
+        }
+    
+    return {'success': False, 'error': f'No posts found for query: {query}'}
+
+# ============================================
+# CLI ENTRY POINTS
 # ============================================
 
 async def main():
-    """Main scraping workflow"""
-    print("🤖 Reddit Scraper Starting...\n")
-    
-    # Initialize database
-    await init_db()
-    
-    # Get Reddit client
-    reddit = get_reddit_client()
-    
-    # Get configuration from .env
-    subreddits_str = os.getenv("SUBREDDITS", "news,worldnews,technology")
-    subreddits = [s.strip() for s in subreddits_str.split(",")]
-    
-    limit_per_sub = int(os.getenv("SCRAPE_LIMIT", "100"))
-    
-    # Option 1: Scrape from multiple subreddits
-    print("\n📋 Scraping Configuration:")
-    print(f"   Subreddits: {subreddits}")
-    print(f"   Limit per subreddit: {limit_per_sub}")
-    
-    posts = scrape_multiple_subreddits(
-        reddit=reddit,
-        subreddits=subreddits,
-        limit_per_sub=limit_per_sub,
-        sort_by="hot"
-    )
-    
-    # Option 2: Keyword-based scraping (optional)
-    # keywords = os.getenv("KEYWORDS", "").split(",")
-    # if keywords and keywords[0]:
-    #     keyword_posts = scrape_with_keywords(
-    #         reddit=reddit,
-    #         subreddit_name="all",
-    #         keywords=keywords,
-    #         limit=50
-    #     )
-    #     posts.extend(keyword_posts)
-    
-    if posts:
-        # Save to JSON (backup)
-        save_to_json(posts)
-        
-        # Save to database
-        await save_to_database(posts)
-        
-        print(f"\n🎉 Scraping complete! Total posts: {len(posts)}")
-    else:
-        print("\n⚠️  No posts scraped. Check your configuration.")
-
-
-# ============================================
-# CLI ENTRY POINT
-# ============================================
+    """Default: Run Workflow 1"""
+    result = await workflow_1_refresh()
+    print("\n" + "="*60)
+    print(f"✅ Workflow 1 Complete: {result}")
+    print("="*60)
 
 if __name__ == "__main__":
-    """
-    Run directly: python scraper/reddit_scraper.py
-    """
-    asyncio.run(main())
+    import sys
+    
+    if len(sys.argv) > 1:
+        # Command line query
+        query = ' '.join(sys.argv[1:])
+        result = asyncio.run(workflow_2_query(query))
+    else:
+        # Default: monitored subreddits
+        asyncio.run(main())

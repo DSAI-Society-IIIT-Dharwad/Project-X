@@ -1,12 +1,11 @@
-# Create a file: test_gemini.py
-import google.generativeai as genai
-import os
-from dotenv import load_dotenv
+# update_db.py
+import asyncio
+from backend.db import init_db
 
-load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+async def main():
+    print("🔄 Updating database with new tables...")
+    await init_db()
+    print("✅ Database updated!")
 
-print("🔍 Your available Gemini models:\n")
-for m in genai.list_models():
-    if 'generateContent' in m.supported_generation_methods:
-        print(f"✅ {m.name}")
+if __name__ == "__main__":
+    asyncio.run(main())
