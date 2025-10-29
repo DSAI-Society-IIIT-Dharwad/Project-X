@@ -7,7 +7,8 @@ MONITORED_SUBREDDITS = [
     'news',
     'worldnews', 
     'UpliftingNews',
-    'geopolitics'
+    'geopolitics',
+    'indianews'
 ]
 
 # Scraping settings
@@ -29,3 +30,21 @@ USE_SEPARATE_QUERY_DB = False  # If True, query results don't mix with main data
 
 SEARCH_ALL_REDDIT = True  # Search entire Reddit, not just monitored subs
 EXCLUDE_NSFW = True  # Skip NSFW content
+
+GOOGLE_NEWS_TOPICS = [
+    "artificial intelligence",
+    "climate change",
+    "space exploration",
+    "cryptocurrency",
+    "politics",
+    "technology"
+]
+
+GOOGLE_NEWS_PERIOD = '7d'  # '1h', '1d', '7d', '1m', '1y'
+GOOGLE_NEWS_MAX_RESULTS = 50
+EXCLUDE_NSFW = True
+EXCLUDED_SUBREDDITS = [
+    'circlejerk',
+    'copypasta',
+    'shitposting'
+]

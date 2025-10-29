@@ -35,6 +35,7 @@ colorama
 hf_xet
 huggingface-hub
 
+
 # Forecasting (optional but impressive)
 prophet
 
@@ -44,6 +45,7 @@ apscheduler
 # Scraping 
 praw
 snscrape
+gnews
 
 #LLM 
 google-generativeai
