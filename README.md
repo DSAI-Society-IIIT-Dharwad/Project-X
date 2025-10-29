@@ -1,4 +1,4 @@
-# 📰 NewsBot: Real-Time News Sentiment Analytics  
+# 📰 Inquiro: Real-Time News Sentiment Analytics  
 ### _Unifying social signals and media coverage for deep, actionable insight._
 
 ---
@@ -133,5 +133,6 @@ Perfect for transparency, public opinion monitoring, and trend evaluation.
 PRAW, gnews, Streamlit, SQLAlchemy, HuggingFace Transformers, Gemini, BERTopic, FAISS.
 
 Thanks to open APIs and developer communities.
+
 
 
