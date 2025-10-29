@@ -66,7 +66,7 @@ All natural language processing tasks are handled by modular transformer-based p
 
 | Task | Description | Technology |
 |------|--------------|-------------|
-| **Sentiment Analysis** | Assigns sentiment scores from -1 (negative) → +1 (positive) | Transformer (e.g. `distilbert-base-uncased-finetuned-sst-2`) |
+| **Sentiment Analysis** | Assigns sentiment scores from -1 (negative) → +1 (positive) | Transformer (e.g. `cardiffnlp/twitter-roberta-base-sentiment-latest`) |
 | **Keyword Extraction** | Highlights trending terms & entities | Frequency analysis |
 | **Embeddings** | Vectorizes text for semantic similarity & clustering | Sentence-Transformers + FAISS |
 | **Topic Modeling** | Groups related content for drift or trend detection | BERTopic |
@@ -133,6 +133,7 @@ Perfect for transparency, public opinion monitoring, and trend evaluation.
 PRAW, gnews, Streamlit, SQLAlchemy, HuggingFace Transformers, Gemini, BERTopic, FAISS.
 
 Thanks to open APIs and developer communities.
+
 
 
 
