@@ -212,10 +212,13 @@ DATABASE_URL=sqlite+aiosqlite:///./news_bot.db
 
 # Scraping
 SCRAPE_LIMIT=100
-SUBREDDITS=news,worldnews,politics,technology
+
 # Google News API Key
 NEWS_API_KEY = Your_api_key
 ```
+### **Configuration**
+- **Subreddits = news, worldnews, politics, technology**
+- **google news topics = technology,news, artificial intelligence, Science**
 
 ### **Model Configuration**
 - **Sentiment Model**: `cardiffnlp/twitter-roberta-base-sentiment-latest`
