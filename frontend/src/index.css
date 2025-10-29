@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-dark-700;
+  }
+
+  body {
+    @apply bg-gradient-dark text-dark-50 antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+  }
+
+  html, body, #root {
+    @apply h-full w-full overflow-hidden;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-dark-700/70 backdrop-blur-lg border border-primary-500/20 rounded-2xl p-6 transition-all duration-300;
+  }
+
+  .card:hover {
+    @apply shadow-lg shadow-primary-500/20 -translate-y-1;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-primary text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-primary-500/40 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  .btn-secondary {
+    @apply bg-dark-600/70 backdrop-blur text-dark-50 font-semibold py-3 px-6 rounded-xl border border-primary-500/20 transition-all duration-300 hover:bg-dark-600 hover:border-primary-500/40;
+  }
+
+  .input-field {
+    @apply w-full bg-dark-700/70 backdrop-blur border border-primary-500/30 rounded-xl px-4 py-3 text-dark-50 placeholder-dark-300 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 transition-all duration-300;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-positive {
+    @apply bg-green-500/20 text-green-400 border border-green-500/30;
+  }
+
+  .badge-negative {
+    @apply bg-red-500/20 text-red-400 border border-red-500/30;
+  }
+
+  .badge-neutral {
+    @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+  }
+
+  .loading-dots {
+    @apply flex space-x-2;
+  }
+
+  .loading-dot {
+    @apply w-3 h-3 bg-primary-500 rounded-full animate-pulse;
+  }
+
+  .loading-dot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .loading-dot:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary-500/50 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary-500/70;
+}
+
+/* Smooth transitions */
+* {
+  @apply transition-colors duration-200;
+}

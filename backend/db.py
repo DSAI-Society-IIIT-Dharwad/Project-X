@@ -23,14 +23,20 @@ from backend.models import Base
 # ============================================
 
 # Create async engine
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=os.getenv("DEBUG", "False").lower() == "true",  # Log SQL queries in debug mode
-    future=True,
-    pool_pre_ping=True,  # Verify connections before using
-    pool_size=10,  # Connection pool size
-    max_overflow=20,  # Max connections beyond pool_size
-)
+engine_kwargs = {
+    "echo": os.getenv("DEBUG", "False").lower() == "true",  # Log SQL queries in debug mode
+    "future": True,
+}
+
+# Only add pool settings for non-SQLite databases
+if not DATABASE_URL.startswith("sqlite"):
+    engine_kwargs.update({
+        "pool_pre_ping": True,  # Verify connections before using
+        "pool_size": 10,  # Connection pool size
+        "max_overflow": 20,  # Max connections beyond pool_size
+    })
+
+engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(
