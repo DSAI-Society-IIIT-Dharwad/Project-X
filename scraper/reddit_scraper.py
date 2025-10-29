@@ -117,9 +117,9 @@ def scrape_monitored_subreddits(
 def search_reddit_by_query(
     reddit: praw.Reddit,
     query: str,
-    subreddits: Optional[List[str]] = None,
     limit: int = None,
-    time_filter: str = None
+    time_filter: str = None,
+    search_all_reddit: bool = True  # NEW PARAMETER
 ) -> List[Dict]:
     """
     Search Reddit for specific query (Workflow 2)
@@ -127,9 +127,9 @@ def search_reddit_by_query(
     Args:
         reddit: PRAW Reddit instance
         query: Search query string
-        subreddits: Subreddits to search (None = all)
         limit: Max results
         time_filter: 'hour', 'day', 'week', 'month', 'year', 'all'
+        search_all_reddit: If True, search ALL of Reddit (not just monitored subs)
     
     Returns:
         List of matching posts
@@ -142,21 +142,19 @@ def search_reddit_by_query(
     
     print(f"\n🔍 WORKFLOW 2: Query-based search")
     print(f"   Query: '{query}'")
+    print(f"   Scope: {'ALL REDDIT' if search_all_reddit else 'Monitored subreddits'}")
     print(f"   Time filter: {time_filter}")
     print(f"   Limit: {limit}\n")
     
     all_posts = []
     
-    # Determine search scope
-    if subreddits is None:
-        subreddits = MONITORED_SUBREDDITS + ['all']  # Include 'all' for broader search
-    
-    for subreddit_name in subreddits:
+    if search_all_reddit:
+        # SEARCH ALL OF REDDIT (like reddit.com/search)
         try:
-            print(f"🔎 Searching r/{subreddit_name}...", end=" ")
-            subreddit = reddit.subreddit(subreddit_name)
+            print(f"🌍 Searching ALL of Reddit...", end=" ")
             
-            search_results = subreddit.search(
+            # Search across all subreddits
+            search_results = reddit.subreddit("all").search(
                 query=query,
                 limit=limit,
                 time_filter=time_filter,
@@ -165,6 +163,10 @@ def search_reddit_by_query(
             
             count = 0
             for submission in search_results:
+                # Skip NSFW and certain subreddits if needed
+                if submission.over_18:
+                    continue
+                
                 post_data = {
                     "post_id": submission.id,
                     "source": "reddit",
@@ -177,20 +179,62 @@ def search_reddit_by_query(
                     "num_comments": submission.num_comments,
                     "created_at": datetime.fromtimestamp(submission.created_utc, tz=timezone.utc),
                     "permalink": f"https://reddit.com{submission.permalink}",
-                    "workflow": "query",  # Mark source
-                    "search_query": query  # Store original query
+                    "workflow": "query",
+                    "search_query": query
                 }
                 
                 all_posts.append(post_data)
                 count += 1
             
             print(f"✅ {count} results")
-            time.sleep(2)  # Rate limiting
-        
+            
         except Exception as e:
             print(f"❌ Error: {e}")
     
-    # Remove duplicates (same post from different subreddit searches)
+    else:
+        # SEARCH ONLY MONITORED SUBREDDITS (old behavior)
+        subreddits = MONITORED_SUBREDDITS
+        
+        for subreddit_name in subreddits:
+            try:
+                print(f"🔎 Searching r/{subreddit_name}...", end=" ")
+                subreddit = reddit.subreddit(subreddit_name)
+                
+                search_results = subreddit.search(
+                    query=query,
+                    limit=limit // len(subreddits),  # Distribute limit
+                    time_filter=time_filter,
+                    sort='relevance'
+                )
+                
+                count = 0
+                for submission in search_results:
+                    post_data = {
+                        "post_id": submission.id,
+                        "source": "reddit",
+                        "subreddit": submission.subreddit.display_name,
+                        "author": str(submission.author) if submission.author else "[deleted]",
+                        "title": submission.title,
+                        "content": submission.selftext if submission.selftext else "",
+                        "url": submission.url,
+                        "score": submission.score,
+                        "num_comments": submission.num_comments,
+                        "created_at": datetime.fromtimestamp(submission.created_utc, tz=timezone.utc),
+                        "permalink": f"https://reddit.com{submission.permalink}",
+                        "workflow": "query",
+                        "search_query": query
+                    }
+                    
+                    all_posts.append(post_data)
+                    count += 1
+                
+                print(f"✅ {count} results")
+                time.sleep(2)  # Rate limiting
+            
+            except Exception as e:
+                print(f"❌ Error: {e}")
+    
+    # Remove duplicates
     seen_ids = set()
     unique_posts = []
     for post in all_posts:
@@ -303,13 +347,14 @@ async def workflow_1_refresh():
     
     return {'success': False, 'error': 'No posts scraped'}
 
-async def workflow_2_query(query: str):
+async def workflow_2_query(query: str, search_all: bool = True):
     """
     Workflow 2: Search Reddit for query
     Called when user submits a query
     
     Args:
         query: User's search query
+        search_all: If True, search ALL of Reddit (default)
     
     Returns:
         Dictionary with scraped posts and stats
@@ -321,8 +366,8 @@ async def workflow_2_query(query: str):
     await init_db()
     reddit = get_reddit_client()
     
-    # Search Reddit
-    posts = search_reddit_by_query(reddit, query)
+    # Search Reddit (ALL or monitored)
+    posts = search_reddit_by_query(reddit, query, search_all_reddit=search_all)
     
     if posts:
         # Save to JSON backup
@@ -338,7 +383,7 @@ async def workflow_2_query(query: str):
             'posts_found': len(posts),
             'posts_saved': stats['saved'],
             'posts_skipped': stats['skipped'],
-            'posts': posts  # Return posts for immediate processing
+            'posts': posts
         }
     
     return {'success': False, 'error': f'No posts found for query: {query}'}

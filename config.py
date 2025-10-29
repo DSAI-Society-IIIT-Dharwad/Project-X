@@ -26,3 +26,6 @@ ENABLE_SUMMARIES = True
 
 # Database settings
 USE_SEPARATE_QUERY_DB = False  # If True, query results don't mix with main data
+
+SEARCH_ALL_REDDIT = True  # Search entire Reddit, not just monitored subs
+EXCLUDE_NSFW = True  # Skip NSFW content
