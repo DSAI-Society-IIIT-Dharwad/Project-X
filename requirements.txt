@@ -44,6 +44,7 @@ apscheduler
 # Scraping 
 praw
 snscrape
+feedparser
 
 #LLM 
 google-generativeai
